@@ -1,25 +1,59 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
+import axios from "axios";
 import './App.css';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 class App extends Component {
+
+  state = {
+    spinner: true,
+    getUrls: [],
+    allObjects: []
+  }
+
+  componentDidMount() {
+    axios.get('https://mkr.tools/api/v1/cdps')
+      .then(response => {
+
+        const sortedByInk = response.data.sort((a, b) => b.ink - a.ink);
+        const first500 = sortedByInk.slice(0, 500);
+        
+        first500.map(cdp => {
+          return this.state.getUrls.push(axios.get(`https://mkr.tools/api/v1/cdp/${cdp.id}/actions`));
+        });
+      })
+      .then(() => {
+        axios.all(this.state.getUrls)
+          .then(response => {
+            response.map(cdp => {
+              return cdp.data.forEach(row => {
+                this.state.allObjects.push(row);
+              })
+            })
+          })
+          .then(() => {
+            axios({
+              url: "https://cdps-api-calls.firebaseio.com/cdps-api-calls.json",
+              method: "put",
+              data: this.state.allObjects
+            })
+            this.setState({spinner: false});
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
+      })      
+      .catch(function (error) {
+        console.log(error);
+      });
+  }
+
   render() {
+
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
+        {this.state.spinner ? <CircularProgress size={80} style={{marginTop: 160}}/>
+        : <div style={{marginTop: 160}}>https://cdps-api-calls.firebaseio.com/cdps-api-calls.json</div>} 
       </div>
     );
   }
