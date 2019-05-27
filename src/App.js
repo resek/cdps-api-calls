@@ -16,16 +16,20 @@ class App extends Component {
     axios.get('https://mkr.tools/api/v1/cdps')
       .then(response => {
 
-        const sortedByInk = response.data.sort((a, b) => b.ink - a.ink);
-        const first1000 = sortedByInk.slice(0, 1000);
-
-        first1000.map(cdp => {
+        const sortedByBlock = response.data.sort((a, b) => b.block - a.block);
+        const minus10day = sortedByBlock[0].block - 65000;
+        const filterd10days = sortedByBlock.filter(cdp => cdp.block >= minus10day);        
+        console.log("filtered");
+        console.log(filterd10days);
+        filterd10days.map(cdp => {
           return this.state.getUrls.push(axios.get(`https://mkr.tools/api/v1/cdp/${cdp.id}/actions`));
         });
       })
       .then(() => {
         axios.all(this.state.getUrls)
           .then(response => {
+            console.log("response from all calls");
+            console.log(response);
             response.map(cdp => {
               return cdp.data.forEach(row => {
                 this.state.allObjects.push(row);
@@ -33,6 +37,7 @@ class App extends Component {
             })
           })
           .then(() => {
+            console.log("saving to DB")
             axios({
               url: "https://cdps-api-calls.firebaseio.com/cdps-api-calls.json",
               method: "put",
